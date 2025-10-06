@@ -52,3 +52,13 @@ npm start
 Uso
 Desde el frontend puedes registrar, editar, actualizar y eliminar niños, y asignarles pulseras.
 El sistema maneja control de pulseras disponibles/asignadas.
+
+## 📦 Base de Datos
+
+El sistema usa MySQL.  
+Para recrear la base de datos:
+
+1. Abre **phpMyAdmin** o tu cliente MySQL preferido.
+2. Crea una base de datos llamada `pulsera_gps`.
+3. Importa el archivo `database/pulsera_gps.sql` incluido en este repositorio.
+4. Verifica que las tablas se hayan creado correctamente.
