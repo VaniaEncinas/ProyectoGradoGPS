@@ -292,7 +292,7 @@ function Pulsera() {
               sx={{
                 minWidth: { xs: "0.75rem", sm: "50rem" },
                 "& td, & th": {
-                  fontSize: { xs: "0.75rem", sm: "0.9rem" },
+                  fontSize: { xs: "0.75rem", sm: "1rem" },
                   whiteSpace: "nowrap",
                   flex: 1,
                 },

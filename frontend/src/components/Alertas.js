@@ -1,11 +1,26 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { Box, IconButton, Tooltip, Typography } from "@mui/material";
+import HistoryIcon from "@mui/icons-material/History";
+import {
+  Box,
+  IconButton,
+  Modal,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tooltip,
+  Typography,
+  useMediaQuery,
+} from "@mui/material";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import Swal from "sweetalert2";
-
 import {
   deleteAlertaRequest,
   getAlertasByNinoRequest,
@@ -20,6 +35,11 @@ const Alertas = () => {
   const id_usuario = user?.id_usuario || user?.id;
 
   const [alertas, setAlertas] = useState([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedNino, setSelectedNino] = useState(null);
+  const [alertasNino, setAlertasNino] = useState([]);
+
+  const isMobile = useMediaQuery("(max-width: 600px)");
 
   const fetchAlertas = async () => {
     try {
@@ -32,6 +52,7 @@ const Alertas = () => {
         const alertasDelNino = res.data.map((a) => ({
           ...a,
           nombre: nino.nombre,
+          id_nino: nino.id_nino,
         }));
         alertasAcumuladas.push(...alertasDelNino);
       }
@@ -70,6 +91,16 @@ const Alertas = () => {
   }, [id_usuario, navigate]);
 
   const handleDelete = async (id_alerta) => {
+    const swalStyles = document.createElement("style");
+    swalStyles.innerHTML = `
+      .swal2-container {
+        z-index: 99999 !important;
+        backdrop-filter: blur(6px);
+        background-color: rgba(0, 0, 0, 0.35) !important;
+      }
+    `;
+    document.head.appendChild(swalStyles);
+
     const result = await Swal.fire({
       title: "¿Eliminar alerta?",
       text: "Esta acción no se puede deshacer",
@@ -85,14 +116,19 @@ const Alertas = () => {
     if (result.isConfirmed) {
       try {
         await deleteAlertaRequest(id_alerta);
-        Swal.fire({
+        await Swal.fire({
           icon: "success",
           title: "Eliminada",
           text: "Alerta eliminada correctamente",
           showConfirmButton: false,
           timer: 2000,
         });
-        fetchAlertas();
+
+        setAlertas((prev) => prev.filter((a) => a.id_alerta !== id_alerta));
+
+        if (modalOpen) {
+          setAlertasNino((prev) => prev.filter((a) => a.id_alerta !== id_alerta));
+        }
       } catch (err) {
         console.error(err);
         Swal.fire({
@@ -105,6 +141,32 @@ const Alertas = () => {
     }
   };
 
+  const openHistorial = (nino) => {
+    const filtradas = alertas.filter((a) => a.id_nino === nino.id_nino);
+    setSelectedNino(nino);
+    setAlertasNino(filtradas);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setSelectedNino(null);
+    setAlertasNino([]);
+  };
+
+  const ultimasAlertas = Object.values(
+    alertas.reduce((acc, alerta) => {
+      if (
+        !acc[alerta.id_nino] ||
+        new Date(alerta.fecha_hora) >
+          new Date(acc[alerta.id_nino].fecha_hora)
+      ) {
+        acc[alerta.id_nino] = alerta;
+      }
+      return acc;
+    }, {})
+  );
+
   return (
     <Box
       sx={{
@@ -113,8 +175,10 @@ const Alertas = () => {
         flexDirection: "column",
         overflow: "hidden",
         position: "relative",
-        maxWidth: 900,
+        maxWidth: "1400px",
+        width: "100%",
         mx: "auto",
+        px: { xs: 1, sm: 2, md: 6 },
       }}
     >
       <IconButton
@@ -144,64 +208,168 @@ const Alertas = () => {
         </Typography>
       </Box>
 
-      <Box
-        sx={{
-          flex: 1,
-          mt: 1,
-          overflowY: "auto",
-          pr: 1,
-          px: 1,
-          scrollbarWidth: "none",
-          "&::-webkit-scrollbar": { display: "none" },
-        }}
-      >
+      <Box sx={{ flex: 1, mt: 5 }}>
         {alertas.length === 0 ? (
           <Typography sx={{ p: 2 }}>No hay alertas disponibles</Typography>
         ) : (
-          alertas.map((alerta) => (
-            <Box
-              key={alerta.id_alerta}
+          <TableContainer
+            component={Paper}
+            sx={{
+              borderRadius: 3,
+              boxShadow: 3,
+              width: "100%",
+              overflowX: "hidden", 
+            }}
+          >
+            <Table
               sx={{
-                p: 2,
-                mb: 1,
-                border: "1px solid #ccc",
-                borderRadius: 2,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                bgcolor:
-                  alerta.tipo_alerta === "salida_zona_segura"
-                    ? "#1b254c26"
-                    : "#08f3083b",
+                minWidth: "100%",
+                tableLayout: "auto",
+                "& th, & td": {
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                },
+                "& th": {
+                  fontSize: { xs: "0.85rem", sm: "1rem" },
+                },
+                "& td": {
+                  fontSize: { xs: "0.85rem", sm: "1rem" },
+                },
               }}
             >
-              <Box>
-                <Typography>
-                  <strong>{alerta.nombre || "Niño/a"}</strong> -{" "}
-                  {alerta.tipo_alerta.replace("_", " ")}
-                </Typography>
-                <Typography>
-                  {alerta.mensaje}
-                  {alerta.nombre_zona && (
-                    <> <strong>(Zona segura: {alerta.nombre_zona})</strong></>
-                  )}
-                </Typography>
-                <Typography variant="caption" color="textSecondary">
-                  {new Date(alerta.fecha_hora).toLocaleString()}
-                </Typography>
-              </Box>
-              <Tooltip title="Eliminar alerta">
-                <IconButton
-                  color="error"
-                  onClick={() => handleDelete(alerta.id_alerta)}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </Tooltip>
-            </Box>
-          ))
+              <TableHead sx={{ bgcolor: "#7886f35f" }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: "bold" }}>Nombre</TableCell>
+                  <TableCell sx={{ fontWeight: "bold" }}>
+                    Tipo de alerta
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: "bold", textAlign: "center" }}>
+                    Acciones
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {ultimasAlertas.map((alerta) => (
+                  <TableRow key={alerta.id_nino}>
+                    <TableCell>{alerta.nombre}</TableCell>
+                    <TableCell>
+                      {alerta.tipo_alerta.replace("_", " ")}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Tooltip title="Ver historial">
+                        <IconButton
+                          onClick={() =>
+                            openHistorial({
+                              id_nino: alerta.id_nino,
+                              nombre: alerta.nombre,
+                            })
+                          }
+                          color="primary"
+                        >
+                          <HistoryIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
       </Box>
+
+      <Modal
+        open={modalOpen}
+        onClose={closeModal}
+        slotProps={{
+          backdrop: {
+            sx: {
+              backdropFilter: "blur(6px)", 
+              backgroundColor: "rgba(0, 0, 0, 0.35)",
+            },
+          },
+        }}
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: { xs: "90%", sm: "85%", md: "70%", lg: "60%" },
+            bgcolor: "background.paper",
+            boxShadow: 24,
+            borderRadius: 3,
+            p: { xs: 2, sm: 3 },
+            maxHeight: "85vh",
+            overflowY: "auto",
+            zIndex: 1500,
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 2,
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+              Historial de {selectedNino?.nombre}
+            </Typography>
+            <IconButton onClick={closeModal}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          {alertasNino.length === 0 ? (
+            <Typography>No hay alertas registradas</Typography>
+          ) : (
+            alertasNino.map((alerta) => (
+              <Box
+                key={alerta.id_alerta}
+                sx={{
+                  p: 2,
+                  mb: 1,
+                  border: "1px solid #ccc",
+                  borderRadius: 2,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  bgcolor:
+                    alerta.tipo_alerta === "salida_zona_segura"
+                      ? "#1b254c26"
+                      : "#08f3083b",
+                }}
+              >
+                <Box sx={{ maxWidth: "80%" }}>
+                  <Typography>
+                    {alerta.tipo_alerta.replace("_", " ")}
+                  </Typography>
+                  <Typography>
+                    {alerta.mensaje}
+                    {alerta.nombre_zona && (
+                      <> <strong>(Zona segura: {alerta.nombre_zona})</strong></>
+                    )}
+                  </Typography>
+                  <Typography variant="caption" color="textSecondary">
+                    {new Date(alerta.fecha_hora).toLocaleString()}
+                  </Typography>
+                </Box>
+                <Tooltip title="Eliminar alerta">
+                  <IconButton
+                    color="error"
+                    onClick={() => handleDelete(alerta.id_alerta)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            ))
+          )}
+        </Box>
+      </Modal>
     </Box>
   );
 };
