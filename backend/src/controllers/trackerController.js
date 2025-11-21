@@ -23,7 +23,7 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
 
 exports.receiveLocation = async (req, res) => {
   try {
-    console.log("\n📩 Petición recibida:", req.method, req.originalUrl);
+    console.log("\nPetición recibida:", req.method, req.originalUrl);
     console.log("Body:", req.body);
     console.log("Query:", req.query);
 
@@ -54,7 +54,7 @@ exports.receiveLocation = async (req, res) => {
       new Date();
 
     if (!deviceId || lat == null || lon == null) {
-      console.log("❌ Faltan datos:", { deviceId, lat, lon });
+      console.log("Faltan datos:", { deviceId, lat, lon });
       return res.status(400).json({ error: "Faltan datos (deviceId, lat, lon)" });
     }
 
@@ -67,7 +67,7 @@ exports.receiveLocation = async (req, res) => {
     );
 
     if (rows.length === 0) {
-      console.log("❌ Pulsera NO registrada:", deviceId);
+      console.log("Pulsera no registrada:", deviceId);
       return res.status(404).json({ error: "Pulsera no registrada" });
     }
 
@@ -78,7 +78,7 @@ exports.receiveLocation = async (req, res) => {
       [id_nino, latNum, lonNum, timestamp]
     );
 
-    console.log("📍 Ubicación guardada:", { id_nino, latNum, lonNum });
+    console.log("Ubicación guardada:", { id_nino, latNum, lonNum });
 
     const io = req.app.get("io");
     if (io && id_usuario) {
@@ -95,8 +95,8 @@ exports.receiveLocation = async (req, res) => {
       [id_nino]
     );
 
-    console.log("🔍 ZONAS ACTIVAS ENCONTRADAS:", zonas);
-    console.log("📍 Ubicación recibida:", latNum, lonNum);
+    console.log("ZONAS ACTIVAS ENCONTRADAS:", zonas);
+    console.log("Ubicación recibida:", latNum, lonNum);
 
     for (const zona of zonas) {
       const distancia = getDistanceFromLatLonInMeters(
@@ -106,9 +106,9 @@ exports.receiveLocation = async (req, res) => {
         zona.longitud
       );
 
-      console.log(`📏 Distancia a zona '${zona.nombre}': ${distancia} metros`);
-      console.log(`🎯 Radio permitido: ${zona.radio_metros} metros`);
-      console.log(`🚦 Alerta enviada previamente: ${zona.alerta_enviada}`);
+      console.log(`Distancia a zona '${zona.nombre}': ${distancia} metros`);
+      console.log(`Radio permitido: ${zona.radio_metros} metros`);
+      console.log(`Alerta enviada previamente: ${zona.alerta_enviada}`);
 
       // niño fuera de la zona segura 
       if (distancia > zona.radio_metros && zona.alerta_enviada === 0) {
@@ -121,14 +121,14 @@ exports.receiveLocation = async (req, res) => {
             tipo_alerta: "salida_zona_segura",
             mensaje: `El niño salió de la zona segura (${zona.nombre}).`
           });
-          console.log("✅ Alerta enviada:", alertResponse.data);
+          console.log("Alerta enviada:", alertResponse.data);
 
           await pool.query(
             "UPDATE zonas_seguras SET alerta_enviada = 1 WHERE id_zona = ?",
             [zona.id_zona]
           );
         } catch (err) {
-          console.log("❌ Error enviando alerta:", err.response?.data || err.message);
+          console.log("Error enviando alerta:", err.response?.data || err.message);
         }
 
         if (io && id_usuario) {
@@ -147,14 +147,14 @@ exports.receiveLocation = async (req, res) => {
           "UPDATE zonas_seguras SET alerta_enviada = 0 WHERE id_zona = ?",
           [zona.id_zona]
         );
-        console.log(`✅ Niño ${id_nino} volvió a la zona segura: ${zona.nombre}, alerta reiniciada`);
+        console.log(`Niño ${id_nino} volvió a la zona segura: ${zona.nombre}, alerta reiniciada`);
       }
     }
 
     return res.status(200).json({ mensaje: "Ubicación guardada y alertas procesadas" });
 
   } catch (error) {
-    console.error("❌ Error en /api/tracker:", error);
+    console.error("Error en /api/tracker:", error);
     return res.status(500).json({ error: "Error interno del servidor" });
   }
 };
