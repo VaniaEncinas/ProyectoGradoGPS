@@ -17,8 +17,8 @@ import {
 } from "@mui/material";
 import axios from "axios";
 import "leaflet/dist/leaflet.css";
-import { useEffect, useState } from "react";
-import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import { useEffect, useRef, useState } from "react";
+import { Circle, MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import { useNavigate } from "react-router-dom";
 import L from "../config/leafletIconFix";
 
@@ -26,6 +26,18 @@ const API_BASE_URL =
   window.location.hostname === "localhost"
     ? "http://localhost:4000"
     : `http://${window.location.hostname}:4000`;
+
+const fetchZonaSeguraActiva = async (id_usuario, id_nino) => {
+  try {
+    const { data } = await axios.get(`${API_BASE_URL}/api/zonas/${id_usuario}`);
+    const zonasActivas = data.filter(z => z.id_nino === id_nino && z.estado === "activo");
+    if (zonasActivas.length === 0) return null;
+    return zonasActivas[0];
+  } catch (error) {
+    console.error("Error obteniendo zona segura activa:", error);
+    return null;
+  }
+};
 
 function Ubicaciones() {
   const navigate = useNavigate();
@@ -37,6 +49,10 @@ function Ubicaciones() {
   const [mapOpen, setMapOpen] = useState(false);
   const [selectedNino, setSelectedNino] = useState(null);
   const [selectedUbicacion, setSelectedUbicacion] = useState(null);
+  const mapRef = useRef(null); 
+  const markerRef = useRef(null);
+  const [isHistorialMap, setIsHistorialMap] = useState(false);
+  const [zonaActiva, setZonaActiva] = useState(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -47,36 +63,89 @@ function Ubicaciones() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => fetchUbicaciones(user.id), 20000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+useEffect(() => {
+  if (!mapOpen || !selectedNino || isHistorialMap) return;
+
+  const interval = setInterval(async () => {
+    try {
+      const { data } = await axios.get(`${API_BASE_URL}/api/ubicaciones/usuario/${user.id}`);
+      const ubicaciones = data.filter(u => u.id_nino === selectedNino.id_nino);
+      if (ubicaciones.length === 0) return;
+
+      const ultima = ubicaciones[0];
+
+      setSelectedUbicacion(ultima);
+      setSelectedNino(prev => ({ ...prev, ultima_ubicacion: ultima }));
+    } catch (err) {
+      console.error("Error actualizando ubicación en tiempo real:", err);
+    }
+  }, 5000); 
+
+  return () => clearInterval(interval);
+}, [mapOpen, selectedNino, user, isHistorialMap]);
+
   const fetchUbicaciones = async (id_usuario) => {
     try {
-      const { data } = await axios.get(
-        `${API_BASE_URL}/api/ubicaciones/usuario/${id_usuario}`
-      );
-
+      const { data } = await axios.get(`${API_BASE_URL}/api/ubicaciones/usuario/${id_usuario}`);
+      
       const grouped = data.reduce((acc, curr) => {
+        if (!curr.id_nino) return acc;
         if (!acc[curr.id_nino]) acc[curr.id_nino] = [];
         acc[curr.id_nino].push(curr);
         return acc;
       }, {});
 
-      const ninosConUltimaUbicacion = Object.keys(grouped).map((id_nino) => {
-        const ubicaciones = grouped[id_nino];
-        const ultima = ubicaciones[0];
-        return {
-          id_nino,
-          nombre: ubicaciones[0].nombre || `Niño ${id_nino}`,
-          ultima_ubicacion: ultima,
-          historial: ubicaciones,
-        };
-      });
+      const ninosConUltimaUbicacion = Object.entries(grouped)
+        .map(([id_nino, ubicaciones]) => {
+          if (!ubicaciones || ubicaciones.length === 0) return null;
+          const ultima = ubicaciones[0];
+          return {
+            id_nino: Number(id_nino),
+            nombre: ultima.nombre || `Niño ${id_nino}`,
+            ultima_ubicacion: ultima,
+            historial: ubicaciones,
+          };
+        })
+        .filter(Boolean);
 
       setNinos(ninosConUltimaUbicacion);
+
+      if (mapOpen && selectedNino) {
+        const actualizado = ninosConUltimaUbicacion.find(n => n.id_nino === selectedNino.id_nino);
+        if (actualizado) {
+          setSelectedUbicacion(actualizado.ultima_ubicacion);
+          setSelectedNino(actualizado);
+        }
+      }
+
       setLoading(false);
     } catch (err) {
       console.error("Error cargando ubicaciones:", err);
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!mapRef.current || !markerRef.current || !selectedUbicacion) return;
+
+    markerRef.current.setLatLng([
+      selectedUbicacion.latitud,
+      selectedUbicacion.longitud,
+    ]);
+    if (mapOpen) {
+    mapRef.current.setView(
+      [selectedUbicacion.latitud, selectedUbicacion.longitud],
+      mapRef.current.getZoom(),
+      { animate: true }
+    );
+    }
+  }, [selectedUbicacion]);
 
   if (!user) return null;
 
@@ -109,12 +178,19 @@ function Ubicaciones() {
       ) : (
         <TableContainer
           component={Paper}
-          sx={{boxShadow: 3, borderRadius: 3, width: "100%", maxWidth: "900px", mx: "auto", overflowX: "auto", overflowY: "auto", maxHeight: "60vh", "&::-webkit-scrollbar": 
-          {width: "8px", height: "8px",}, "&::-webkit-scrollbar-thumb": { backgroundColor: "transparent", borderRadius: "8px", transition: "background-color 0.3s ease",},
-          "&::-webkit-scrollbar-track": { backgroundColor: "transparent",}, "&:hover::-webkit-scrollbar-thumb": { backgroundColor: "rgba(0, 0, 0, 0.4)",},
-          "&:hover::-webkit-scrollbar-track": { backgroundColor: "rgba(0, 0, 0, 0.1)",}, scrollbarWidth: "thin", "&:not(:hover)": { scrollbarColor: "transparent transparent",},
-          "&:hover": { scrollbarColor: "rgba(0, 0, 0, 0.4) rgba(0, 0, 0, 0.1)",},}}>
-            
+          sx={{
+            boxShadow: 3, borderRadius: 3, width: "100%", maxWidth: "900px", mx: "auto",
+            overflowX: "auto", overflowY: "auto", maxHeight: "60vh",
+            "&::-webkit-scrollbar": { width: "8px", height: "8px" },
+            "&::-webkit-scrollbar-thumb": { backgroundColor: "transparent", borderRadius: "8px", transition: "background-color 0.3s ease" },
+            "&::-webkit-scrollbar-track": { backgroundColor: "transparent" },
+            "&:hover::-webkit-scrollbar-thumb": { backgroundColor: "rgba(0, 0, 0, 0.4)" },
+            "&:hover::-webkit-scrollbar-track": { backgroundColor: "rgba(0, 0, 0, 0.1)" },
+            scrollbarWidth: "thin",
+            "&:not(:hover)": { scrollbarColor: "transparent transparent" },
+            "&:hover": { scrollbarColor: "rgba(0, 0, 0, 0.4) rgba(0, 0, 0, 0.1)" }
+          }}
+        >
           <Table sx={{ minWidth: 850 }}>
             <TableHead>
               <TableRow sx={{ backgroundColor: "#7886f35f" }}>
@@ -144,7 +220,7 @@ function Ubicaciones() {
                       <IconButton
                         color="secondary"
                         sx={{ "&:hover": { bgcolor: "#de53d77d" }, borderRadius: "20px" }}
-                        onClick={() => { setSelectedNino(nino); setSelectedUbicacion(nino.ultima_ubicacion); setMapOpen(true); }}
+                        onClick={async() => { setIsHistorialMap(false); setSelectedNino(nino); setSelectedUbicacion(nino.ultima_ubicacion); const zona = await fetchZonaSeguraActiva(user.id, nino.id_nino); setZonaActiva(zona); setMapOpen(true); }}
                       >
                         <MapIcon />
                       </IconButton>
@@ -169,25 +245,18 @@ function Ubicaciones() {
             p: 1.5,
             backdropFilter: "blur(6px)",
             backgroundColor: "rgba(3,3,23,0.38)",
-            overflowX: "hidden",
-            WebkitOverflowScrolling: "touch",
-            touchAction: "pan-y",
           }}
         >
           <Paper
             sx={{
               width: "clamp(320px, 92vw, 500px)",
-              maxWidth: "95vw",
-              boxSizing: "border-box",
               p: { xs: 2, sm: 4 },
               borderRadius: 3,
               boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
               position: "relative",
               background: "radial-gradient(circle, rgba(254,253,254,0.96) 0%, rgba(224,232,247,0.86) 100%)",
-              backdropFilter: "blur(8px)",
               overflowY: "auto",
-              maxHeight: "90vh",
-              mx: "auto",
+              maxHeight: "80vh",
             }}
           >
             <IconButton onClick={() => setHistorialOpen(false)} sx={{ position: "absolute", top: 10, right: 10, color: "#000" }}>
@@ -215,7 +284,7 @@ function Ubicaciones() {
                       <Tooltip title="Ver en mapa">
                         <IconButton
                           color="secondary"
-                          onClick={() => { setSelectedUbicacion(ubi); setMapOpen(true); }}
+                          onClick={async() => { setIsHistorialMap(true); setSelectedUbicacion(ubi); const zona = await fetchZonaSeguraActiva(user.id, selectedNino.id_nino);setZonaActiva(zona); setMapOpen(true);}}
                         >
                           <MapIcon />
                         </IconButton>
@@ -241,9 +310,6 @@ function Ubicaciones() {
             p: 1.5,
             backdropFilter: "blur(6px)",
             backgroundColor: "rgba(3,3,23,0.5)",
-            overflowX: "hidden",
-            WebkitOverflowScrolling: "touch",
-            touchAction: "pan-y",
           }}
         >
           <Paper
@@ -261,22 +327,27 @@ function Ubicaciones() {
             }}
           >
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", bgcolor: "#f6f4fa", borderBottom: "1px solid #e0e0e0", px: 2, py: 1 }}>
-              <Typography
-                variant="h6" sx={{ fontWeight: "bold", color: "#555", fontSize: "1.1rem" }}>
-                {historialOpen ? "Ubicación" : "Última ubicación"}
+              <Typography variant="h6" sx={{ fontWeight: "bold", color: "#555", fontSize: "1.1rem" }}>
+                {historialOpen ? "Ubicación" : "Ubicación Actual"}
               </Typography>
-              <IconButton onClick={() => setMapOpen(false)} sx={{ bgcolor: "white", boxShadow: 1, "&:hover": { bgcolor: "#f0f0f0" } }}>
+              <IconButton onClick={() => {setMapOpen(false); setIsHistorialMap(false);}} sx={{ bgcolor: "white", boxShadow: 1, "&:hover": { bgcolor: "#f0f0f0" } }}>
                 <CloseIcon />
               </IconButton>
             </Box>
 
             <Box sx={{ flex: 1, position: "relative" }}>
-              <MapContainer center={[selectedUbicacion.latitud, selectedUbicacion.longitud]} zoom={15} style={{ width: "100%", height: "100%" }}>
+              <MapContainer
+                center={[selectedUbicacion.latitud, selectedUbicacion.longitud]}
+                zoom={15}
+                whenCreated={(mapInstance) => { mapRef.current = mapInstance; }}
+                style={{ width: "100%", height: "100%" }}
+              >
                 <TileLayer
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 />
                 <Marker
+                  ref={markerRef}
                   position={[selectedUbicacion.latitud, selectedUbicacion.longitud]}
                   icon={L.icon({
                     iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -289,6 +360,13 @@ function Ubicaciones() {
                     {selectedUbicacion.fecha_hora}
                   </Popup>
                 </Marker>
+                {zonaActiva && (
+                  <Circle
+                   center={[zonaActiva.latitud, zonaActiva.longitud]}
+                   radius={zonaActiva.radio_metros}
+                  pathOptions={{ color: "green", fillColor: "lightblue", fillOpacity: 0.75 }}
+                  />
+                )}
               </MapContainer>
             </Box>
           </Paper>

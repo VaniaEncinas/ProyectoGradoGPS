@@ -21,6 +21,7 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
+import Swal from "sweetalert2";
 
 const menuItems = [
   { text: "Perfil", icon: <PersonIcon />, path: "/principal/perfil" },
@@ -88,7 +89,22 @@ const Sidebar = ({ onLogout }) => {
           bgcolor: "#0d2648ff",
           "&:hover": { bgcolor: "#0e0e0ede" },
         }}
-        onClick={onLogout}
+        onClick={() => {
+          Swal.fire({
+          title: "¿Está seguro de cerrar sesión?",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonText: "Sí",
+          cancelButtonText: "No",
+          confirmButtonColor: '#126117c8',
+          cancelButtonColor: '#c62828',
+          reverseButtons: true,
+        }).then((result) => {
+          if (result.isConfirmed) {
+          onLogout();
+        }
+      });
+    }}
       >
         Cerrar sesión
       </Button>
