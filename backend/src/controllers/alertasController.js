@@ -1,5 +1,6 @@
 const pool = require("../config/db");
 const nodemailer = require("nodemailer");
+const EMAIL_ADMIN = process.env.ADMIN_EMAIL;
 
 // CONFIGURACIÓN DEL TRANSPORTE DE GMAIL 
 const transporter = nodemailer.createTransport({
@@ -143,6 +144,33 @@ const crearAlerta = async (req, res) => {
       } catch (err) {
         console.error("Error al enviar correo:", err.message);
       }
+
+      // enviar correo a la administración de la unidad educativa
+      try {
+        const htmlAdmin = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+        <h2 style="color: #e81a1aff;">Aviso de alerta para administración</h2>
+        <p>Se ha generado una alerta del estudiante <strong>${nombre_nino}</strong>.</p>
+        <ul>
+        <li><strong>Tipo de alerta:</strong> ${tipo_alerta}</li>
+        <li><strong>Zona:</strong> ${nombre_zona}</li>
+        <li><strong>Pulsera:</strong> ${nombre_pulsera}</li>
+        <li><strong>Fecha:</strong> ${new Date().toLocaleString()}</li>
+        </ul>
+        <p>Por favor verifica su ubicación lo antes posible.</p>
+        </div>
+  `;
+
+        await enviarCorreo(
+        EMAIL_ADMIN,
+        `Aviso de alerta de ${tipo_alerta}`,
+        htmlAdmin
+     );
+
+  console.log(`📧 Correo de alerta enviado a ${EMAIL_ADMIN}`);
+} catch (err) {
+  console.error("❌ Error enviando correo administrativo:", err.message);
+}
 
       // Emitir alerta en tiempo real 
       if (io) {
