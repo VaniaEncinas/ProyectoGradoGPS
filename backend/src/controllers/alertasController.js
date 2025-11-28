@@ -160,22 +160,21 @@ const crearAlerta = async (req, res) => {
         <p>Por favor verifica su ubicación lo antes posible.</p>
         </div>
   `;
-
         await enviarCorreo(
         EMAIL_ADMIN,
         `Aviso de alerta de ${tipo_alerta}`,
         htmlAdmin
      );
 
-  console.log(`📧 Correo de alerta enviado a ${EMAIL_ADMIN}`);
+  console.log(`Correo de alerta enviado a ${EMAIL_ADMIN}`);
 } catch (err) {
-  console.error("❌ Error enviando correo administrativo:", err.message);
+  console.error("Error enviando correo de alerta a administración:", err.message);
 }
 
       // Emitir alerta en tiempo real 
       if (io) {
         io.to(email).emit("nuevaAlerta", alertaNueva);
-        console.log(`📡 Emitida alerta a ${email}`);
+        console.log(`Emitida alerta a ${email}`);
       }
     }
 
