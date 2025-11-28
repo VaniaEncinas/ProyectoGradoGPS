@@ -51,8 +51,21 @@ CREATE TABLE `ubicaciones` (
   `id_nino` int(11) NOT NULL,
   `latitud` decimal(10,8) NOT NULL,
   `longitud` decimal(11,8) NOT NULL,
-  `fecha_hora` timestamp NOT NULL DEFAULT current_timestamp()
+  `fecha_hora` datetime(3) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+--
+-- Disparadores `ubicaciones`
+--
+DELIMITER $$
+CREATE TRIGGER `ajustar_hora_insert` BEFORE INSERT ON `ubicaciones` FOR EACH ROW BEGIN
+    -- Ajusta timestampUTC y fecha_hora restando 4 horas
+    SET NEW.fecha_hora = NEW.fecha_hora - INTERVAL 4 HOUR;
+END
+$$
+DELIMITER ;
+
+-- --------------------------------------------------------
+
 --
 -- Estructura de tabla para la tabla `usuarios`
 --
@@ -80,6 +93,7 @@ CREATE TABLE `zonas_seguras` (
   `longitud` decimal(11,8) NOT NULL,
   `radio_metros` int(11) NOT NULL,
   `estado` enum('activo','inactivo') DEFAULT 'activo',
+  `alerta_enviada` tinyint(1) DEFAULT 0,
   `fecha_creacion` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -132,41 +146,37 @@ ALTER TABLE `zonas_seguras`
 -- AUTO_INCREMENT de la tabla `alertas`
 --
 ALTER TABLE `alertas`
-  MODIFY `id_alerta` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_alerta` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
 
 --
 -- AUTO_INCREMENT de la tabla `ninos`
 --
 ALTER TABLE `ninos`
-  MODIFY `id_nino` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id_nino` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT de la tabla `pulsera`
 --
 ALTER TABLE `pulsera`
-  MODIFY `id_pulsera` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id_pulsera` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT de la tabla `ubicaciones`
 --
 ALTER TABLE `ubicaciones`
-  MODIFY `id_ubicacion` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id_ubicacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1469;
 
 --
 -- AUTO_INCREMENT de la tabla `usuarios`
 --
 ALTER TABLE `usuarios`
-  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT de la tabla `zonas_seguras`
 --
 ALTER TABLE `zonas_seguras`
-  MODIFY `id_zona` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
-
---
--- Restricciones para tablas volcadas
---
+  MODIFY `id_zona` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
 -- Filtros para la tabla `alertas`
