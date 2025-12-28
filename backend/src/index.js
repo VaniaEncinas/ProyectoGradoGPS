@@ -12,6 +12,7 @@ const pulseraRoutes = require("./routes/pulseraRoutes");
 const zonaRoutes = require("./routes/zonaRoutes");
 const alertasRoutes = require("./routes/alertasRoutes");
 const trackerRoutes = require("./routes/trackerRoutes");
+const gpsFisicoRoutes = require("./routes/gpsFisicoRoutes");
 
 const app = express();
 app.use(cors());
@@ -30,6 +31,7 @@ app.use("/api/pulseras", pulseraRoutes);
 app.use("/api/zonas", zonaRoutes);
 app.use("/api/alertas", alertasRoutes);
 app.use("/api/tracker", trackerRoutes);
+app.use("/api/gps-fisico", gpsFisicoRoutes);
 
 // Middleware para rutas no encontradas
 app.use((req, res) => {
@@ -77,5 +79,4 @@ const PORT = process.env.PORT || 4000;
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Servidor backend corriendo en:`);
   console.log(`Local:   http://localhost:${PORT}`);
-  console.log(`Red LAN: http://${require("os").networkInterfaces()["Wi-Fi"][0].address}:${PORT}`);
 });
