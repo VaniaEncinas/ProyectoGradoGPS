@@ -32,8 +32,10 @@ function Dashboard({ user }) {
   }, [user]);
 
   const totalNinos = ninos.length;
-  const pulserasDisponibles = pulseras.filter((p) => !p.id_nino).length;
-  const pulserasAsignadas = pulseras.filter((p) => p.id_nino).length;
+  const pulserasDisponibles = (Array.isArray(pulseras) ? pulseras : [])
+  .filter((p) => !p.id_nino).length;
+  const pulserasAsignadas = (Array.isArray(pulseras) ? pulseras : [])
+  .filter((p) => p.id_nino).length;
 
   return (
     <Box
