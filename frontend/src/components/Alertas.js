@@ -49,11 +49,13 @@ const Alertas = () => {
 
       for (let nino of ninos) {
         const res = await getAlertasByNinoRequest(nino.id_nino);
-        const alertasDelNino = res.data.map((a) => ({
-          ...a,
-          nombre: nino.nombre,
-          id_nino: nino.id_nino,
-        }));
+        const alertasDelNino = Array.isArray(res.data)
+         ? res.data.map((a) => ({
+         ...a,
+         nombre: nino.nombre,
+         id_nino: nino.id_nino,
+        }))
+        : [];
         alertasAcumuladas.push(...alertasDelNino);
       }
 
@@ -142,7 +144,9 @@ const Alertas = () => {
   };
 
   const openHistorial = (nino) => {
-    const filtradas = alertas.filter((a) => a.id_nino === nino.id_nino);
+    const filtradas = Array.isArray(alertas)
+    ? alertas.filter((a) => a.id_nino === nino.id_nino)
+    : [];
     setSelectedNino(nino);
     setAlertasNino(filtradas);
     setModalOpen(true);
@@ -155,7 +159,8 @@ const Alertas = () => {
   };
 
   const ultimasAlertas = Object.values(
-    alertas.reduce((acc, alerta) => {
+    Array.isArray(alertas)
+    ? alertas.reduce((acc, alerta) => {
       if (
         !acc[alerta.id_nino] ||
         new Date(alerta.fecha_hora) >
@@ -165,6 +170,7 @@ const Alertas = () => {
       }
       return acc;
     }, {})
+    : {}
   );
 
   return (

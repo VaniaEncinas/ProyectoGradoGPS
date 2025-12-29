@@ -51,7 +51,7 @@ function Pulsera() {
       setUser(parsedUser);
 
       getPulserasByUsuarioRequest(parsedUser.id)
-        .then((res) => setPulseras(res.data))
+        .then((res) => setPulseras(Array.isArray(res.data) ? res.data : []))
         .catch((err) => console.error("Error cargando pulseras:", err));
     }
   }, []);
@@ -78,9 +78,11 @@ function Pulsera() {
       if (editingPulsera) {
         const { data } = await updatePulseraRequest(editingPulsera.id_pulsera, { nombre });
         setPulseras(
-          pulseras.map((p) =>
+          Array.isArray(pulseras)
+          ? pulseras.map((p) =>
             p.id_pulsera === editingPulsera.id_pulsera ? { ...p, nombre: data.nombre } : p
           )
+          : []
         );
 
         Swal.fire({
@@ -154,9 +156,11 @@ function Pulsera() {
     setShowForm(true);
   };
 
-  const pulserasFiltradas = pulseras.filter((p) =>
+  const pulserasFiltradas = Array.isArray(pulseras)
+  ? pulseras.filter((p) =>
     p.nombre.toLowerCase().includes(busqueda.toLowerCase())
-  );
+  )
+  : [];
 
   if (!user) return null;
 

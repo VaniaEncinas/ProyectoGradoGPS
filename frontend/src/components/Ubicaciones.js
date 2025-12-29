@@ -30,7 +30,7 @@ const API_BASE_URL =
 const fetchZonaSeguraActiva = async (id_usuario, id_nino) => {
   try {
     const { data } = await axios.get(`${API_BASE_URL}/api/zonas/${id_usuario}`);
-    const zonasActivas = data.filter(z => z.id_nino === id_nino && z.estado === "activo");
+    const zonasActivas = Array.isArray(data) ? data.filter(z => z.id_nino === id_nino && z.estado === "activo") : [];
     if (zonasActivas.length === 0) return null;
     return zonasActivas[0];
   } catch (error) {
@@ -75,7 +75,7 @@ useEffect(() => {
   const interval = setInterval(async () => {
     try {
       const { data } = await axios.get(`${API_BASE_URL}/api/ubicaciones/usuario/${user.id}`);
-      const ubicaciones = data.filter(u => u.id_nino === selectedNino.id_nino);
+      const ubicaciones = Array.isArray(data) ? data.filter(u => u.id_nino === selectedNino.id_nino) : [];
       if (ubicaciones.length === 0) return;
 
       const ultima = ubicaciones[0];
@@ -276,7 +276,7 @@ useEffect(() => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {selectedNino.historial.map((ubi, index) => (
+                {(selectedNino.historial || []).map((ubi, index) => (
                   <TableRow key={index}>
                     <TableCell>{ubi.fecha_hora}</TableCell>
                     <TableCell>{`${ubi.latitud}, ${ubi.longitud}`}</TableCell>

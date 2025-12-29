@@ -65,8 +65,25 @@ const Zonas = () => {
   }, []);
 
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem("user"));
+  const storedUser = localStorage.getItem("user");
+  const user = storedUser ? JSON.parse(storedUser) : null;
   const id_usuario = user?.id;
+
+  useEffect(() => {
+    if (!id_usuario) {
+      Swal.fire({
+        icon: "warning",
+        title: "Sesión expirada",
+        text: "Por favor inicia sesión nuevamente.",
+      }).then(() => {
+        localStorage.clear();
+        navigate("/");
+      });
+    } else {
+      fetchNinos();
+      fetchZonas();
+    }
+}, [id_usuario, navigate]);
 
   const [ninos, setNinos] = useState([]);
   const [zonas, setZonas] = useState([]);
@@ -107,7 +124,7 @@ const Zonas = () => {
   const fetchNinos = async () => {
     try {
       const res = await getNinosByUsuarioRequest(id_usuario);
-      setNinos(res.data);
+      setNinos(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error(err);
       Swal.fire("Error", "No se pudieron cargar los niños", "error");
@@ -116,8 +133,8 @@ const Zonas = () => {
 
   const fetchZonas = async () => {
     try {
-      const res = await getZonasRequest(id_usuario);
-      setZonas(res.data);
+      const resZonas = await getZonasRequest(id_usuario);
+      setZonas(Array.isArray(resZonas.data) ? resZonas.data : []);
     } catch (err) {
       console.error(err);
       Swal.fire("Error", "No se pudieron cargar las zonas", "error");
@@ -271,11 +288,12 @@ const Zonas = () => {
     ) : null;
   };
 
-  const lastZonas = ninos.map((n) => {
+  const lastZonas = Array.isArray(ninos) && Array.isArray(zonas)
+  ? ninos.map((n) => {
   const zonasNino = zonas.filter(z => z.id_nino === n.id_nino && z.estado === "activo");
-  if (!zonasNino.length) return null;
-  return zonasNino[zonasNino.length - 1];
-}).filter(z => z);
+  return zonasNino.length ? zonasNino[zonasNino.length - 1] : null;
+}).filter(z => z)
+: [];
 
   return (
       <Box sx={{ p: { xs: 1, sm: 2 }, width: "100%", mx: "auto" }}>
@@ -462,7 +480,7 @@ const Zonas = () => {
               <Typography variant="h6">Historial de {selectedNino?.nombre}</Typography>
               <IconButton onClick={() => setModalHistorialOpen(false)}><CloseIcon /></IconButton>
             </Box>
-            {selectedNino && zonas.filter(z => z.id_nino === selectedNino.id_nino).map(z => (
+            {selectedNino && Array.isArray(zonas) && zonas.filter(z => z.id_nino === selectedNino.id_nino).map(z => (
               <Box key={z.id_zona} sx={{ p: 2, mb: 1, border: "1px solid #ccc", borderRadius: 2, display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#0000001b" }}>
                 <Box>
                   <Typography><strong>{z.nombre_zona}</strong></Typography>

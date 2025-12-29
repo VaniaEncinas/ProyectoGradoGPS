@@ -54,11 +54,11 @@ function Ninos() {
     setUser(parsedUser);
 
     getNinosByUsuarioRequest(parsedUser.id)
-      .then((res) => setNinos(res.data))
+      .then((res) => setNinos(Array.isArray(res.data) ? res.data : []))
       .catch((err) => console.error(err));
 
     getPulserasByUsuarioRequest(parsedUser.id)
-      .then((res) => setPulseras(res.data))
+      .then((res) => setPulseras(Array.isArray(res.data) ? res.data : []))
       .catch((err) => console.error(err));
   }, []);
 
@@ -156,9 +156,9 @@ function Ninos() {
         id_pulsera: pulseraId,
       });
 
-      const pulseraAsignada = pulseras.find(
-        (p) => p.id_pulsera === parseInt(pulseraId)
-      );
+      const pulseraAsignada = Array.isArray(pulseras)
+  ? pulseras.find((p) => p.id_pulsera === parseInt(pulseraId))
+  : undefined;
       setNinos([
         ...ninos,
         {
@@ -247,13 +247,17 @@ function Ninos() {
     setShowForm(true);
   };
 
-  const ninosFiltrados = ninos.filter((nino) =>
+  const ninosFiltrados = Array.isArray(ninos)
+  ? ninos.filter((nino) =>
     nino.nombre.toLowerCase().includes(busqueda.toLowerCase())
-  );
+  )
+: [];
 
-  const pulserasLibres = pulseras.filter(
+  const pulserasLibres = Array.isArray(pulseras)
+  ? pulseras.filter(
     (p) => !p.id_nino || (editingNino && p.id_nino === editingNino.id_nino)
-  );
+  )
+: [];
 
   if (!user) return null;
 
