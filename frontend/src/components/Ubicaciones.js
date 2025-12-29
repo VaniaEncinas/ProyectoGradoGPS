@@ -22,7 +22,10 @@ import { Circle, MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import { useNavigate } from "react-router-dom";
 import L from "../config/leafletIconFix";
 
-const API_BASE_URL = "https://mi-backend.vercel.app"
+const API_BASE_URL =
+  window.location.hostname === "localhost"
+    ? "http://localhost:4000"
+    : `http://${window.location.hostname}:4000`;
 
 const fetchZonaSeguraActiva = async (id_usuario, id_nino) => {
   try {
